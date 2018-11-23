@@ -2,8 +2,8 @@
 @Author: moling
 @Date: 2018-11-21 10:35:51
 @LastEditors: moling
-@LastEditTime: 2018-11-23 11:29:20
-@Description: 用来查找指定目录下的重复文件。
+@LastEditTime: 2018-11-23 12:12:56
+@Description: 整理find内的代码，用来查找指定目录下的重复文件。
 '''
 import re
 import os
@@ -19,7 +19,6 @@ DBPATH=sys.path[0]
 DBNAME="TDB.db"
 SUFFIX=["pdf","epub","mobi"]
 DEFAULTPATH=sys.path[0]
-
 
 CODING="utf-8"
 OPENMODE="rb"
@@ -59,6 +58,7 @@ def db_connect(dbpath=None,dbname=None):
             conn = False
     return conn       
 
+
 def db_connect_close(conn):
     if(conn is not False):
         conn.commit()
@@ -94,17 +94,40 @@ def add_info(cur,table_name,item_info,sql_add):
     except:
         return False
 
-def del_info(cur,table_name,item_id,sql_del):
+def del_info(id,dbpath=None,dbname=None):
+    conn =db_connect(dbpath,dbname)
+    if(conn is False):
+        exit("Can't connect database.")
+    print("Connect to DB.....")
+    cur = conn.cursor()
+    sql_search = "SELECT * from {} where id={}"
+    sql_del = "DELETE from {} where id={}"
     try:
-        cur.execute(sql_del.format(table_name,item_id))
+        if(search_info(cur,FTABLE,id,sql_search) is not False):
+            item=cur.fetchone()
+            os.remove(os.path.join(item[2],item[1]))
+        else:
+            cur.close()
+            db_connect_close(conn)
+            exit("Can't delete the file which id is {}.".format(id))
+        try:
+            cur.execute(sql_del.format(FTABLE,id))
+            cur.close()
+            db_connect_close(conn)
+        except:
+            cur.close()
+            db_connect_close(conn)
+            exit("Can't delete the file info which id is {}.".format(id))
         return True
     except:
+        cur.close()
+        db_connect_close(conn)
         return False
 
 def search_info(cur,table_name,item_info,sql_search):
     try:
         cur.execute(sql_search.format(table_name,item_info))
-        return True
+        return cur
     except:
         return False
 
@@ -150,6 +173,7 @@ def record_format(suffix=None):
 def is_need_record(judge,name):
     return judge.match(name)
 
+
 def sha1sum(fullpath):
     if(is_file_exists(fullpath)):
         filehash = hashlib.sha1()
@@ -159,6 +183,7 @@ def sha1sum(fullpath):
         return filehash.hexdigest()
     else:
         return False
+
 
 def scan_dirs(cur,suffix=None,fullpath=None):
     if fullpath is None:
@@ -205,6 +230,7 @@ def is_in_table(cur,table_name,item_info,sql_in):
         return cur
     except:
         return False
+
 def check_file(file,dbpath=None,dbname=None):
     conn= db_connect(dbpath,dbname)
     if(conn is False):
@@ -219,14 +245,20 @@ def check_file(file,dbpath=None,dbname=None):
             while(line):
                 print(line)
                 line=cur.fetchone()
+            cur.close()
+            db_connect_close(conn)
             return True
         else:
-            False
+            cur.close()
+            db_connect_close(conn)
+            return False
     else:
+        cur.close()
+        db_connect_close(conn)
         exit("Enter full path of the file,please.File dosen't exists.")
-
+  
 def exit(message="Done!"):
-        input("{} Enter any key to Exit...".format(message))
+        input("{}\nEnter any key to Exit...".format(message))
         sys.exit()
 
 
@@ -239,21 +271,26 @@ if __name__ == "__main__":
     parser.add_argument("--dbpath",help="specify the database path.")
     parser.add_argument("--dbname",help="Name the database.")
     parser.add_argument("--file",help="Check the file is or not in database.")
-    parser.add_argument("--delete",help="Delete the file and it's record in database.")
+    parser.add_argument("--delete",type=int,help="Delete the file and it's record in database.")
     args=parser.parse_args()
     
     suffix = args.suffix
     fullpath = args.directory
     dbpath = args.dbpath
     dbname = args.dbname
-    if(args.file is not None):
-        file = args.file
+    file = args.file
+    id=args.delete
+    if(file is not None):
         if(check_file(file,dbpath,dbname)):
             exit()
         else:
             exit("File dose not exists.")
-    if(args.delete is not None):
-        exit("Don't work too,sorry! I haven't finish it! :) ")
+
+    if(id is not None):
+        if(del_info(id,dbpath,dbname)):
+            exit()
+        else:
+            exit("DELETE ERROR!")
 
     conn = db_connect(dbpath,dbname)
     if(conn is False):
@@ -267,9 +304,11 @@ if __name__ == "__main__":
     else:
         print("Can't creat table {}".format(FTABLE))
     print("Files table is exists....")
+
     scan_dirs(cur,suffix,fullpath)
     print("Scan finished.")
     print("****************")
+
     sql_statement = 'select * from {} as a where ({} in (select {} from {} as b where a.id <> b.id)) order by {}'
     print("Start to write info to file.")
     if(find_duplicate(cur,FTABLE,"hash",sql_statement,dbpath) is False):
@@ -279,4 +318,4 @@ if __name__ == "__main__":
     if db_connect_close(conn):
         exit()
     else:
-        exit("DB cannt be close.")
+        exit("DB can't be close.")

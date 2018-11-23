@@ -45,14 +45,25 @@ optional arguments:
                         默认为TDB.db。
   --file FILE           查看指定文件是否已经记录。
                         需要填写绝对路径，对于路径或文件名有中文的，cmd可能查找出错（我遇到后将其切换到旧版就可以了）。
-  --delete DELETE       删除指定文件的记录信息。
+  --delete DELETE       删除指定文件以及其在数据库中的记录信息。通过指定文件在数据                       库中的ID来实现删除。
 
 ```
 **示例**
 ```
 不带参数，将find.py放到，需要扫描的目录。比如E盘根目录。在终端里运行
 python e:\find.py
-
 带参数的。将终端切换到find.py所在的目录运行
 python find.py -s "txt epub mobi pdf azw3" -d e: --dbpath d: --dbname E.db
+
+
+查看文件时否在记录（使用默认数据库路径以及库名）
+python find.py --file e:\example.txt
+不使用默认的数据库路径和库名
+python find.py --file e:\example.txt --dbpath examplepath --dbname example.db
+
+
+删除指定文件(使用默认数据库路径以及库名)
+python find.py --delete 123
+不使用默认的数据库路径和库名
+python find.py --delete --dbpath examplepath --dbname example.db
 ```
