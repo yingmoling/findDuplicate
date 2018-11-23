@@ -2,7 +2,7 @@
 @Author: moling
 @Date: 2018-11-21 10:35:51
 @LastEditors: moling
-@LastEditTime: 2018-11-22 21:16:28
+@LastEditTime: 2018-11-23 11:29:20
 @Description: 用来查找指定目录下的重复文件。
 '''
 import re
@@ -156,7 +156,7 @@ def sha1sum(fullpath):
         with open(fullpath,OPENMODE) as f:
             for line in f.readlines():
                 filehash.update(line)
-        return filehash
+        return filehash.hexdigest()
     else:
         return False
 
@@ -190,7 +190,7 @@ def scan_dirs(cur,suffix=None,fullpath=None):
                             print("sha1sum failed!!! {}".format(fullpath))
                             continue
                         stat = entry.stat()
-                        insert_content="(name,path,fsize,mtime,hash) values ('{}','{}','{}','{}','{}')".format(entry.name,directory,stat.st_size,stat.st_mtime_ns,sha1.hexdigest())
+                        insert_content="(name,path,fsize,mtime,hash) values ('{}','{}','{}','{}','{}')".format(entry.name,directory,stat.st_size,stat.st_mtime_ns,sha1)
                         sql_statement = "insert into {} {}"
                         if add_info(cur,FTABLE,insert_content,sql_statement):
                             conn.commit()
@@ -202,10 +202,29 @@ def scan_dirs(cur,suffix=None,fullpath=None):
 def is_in_table(cur,table_name,item_info,sql_in):
     try:
         cur.execute(sql_in.format(table_name,item_info))
-        return cur.fatchone()
+        return cur
     except:
         return False
-     
+def check_file(file,dbpath=None,dbname=None):
+    conn= db_connect(dbpath,dbname)
+    if(conn is False):
+        exit("Can't connect database.")
+    print("Connect to DB.....")
+    cur = conn.cursor()
+    if(is_file_exists(file)):
+        sha1=sha1sum(file)
+        sql_statement="select * from {} where hash='{}'"
+        if(is_in_table(cur,FTABLE,sha1,sql_statement) is not False):
+            line=cur.fetchone()
+            while(line):
+                print(line)
+                line=cur.fetchone()
+            return True
+        else:
+            False
+    else:
+        exit("Enter full path of the file,please.File dosen't exists.")
+
 def exit(message="Done!"):
         input("{} Enter any key to Exit...".format(message))
         sys.exit()
@@ -228,7 +247,11 @@ if __name__ == "__main__":
     dbpath = args.dbpath
     dbname = args.dbname
     if(args.file is not None):
-        exit("Don't work,sorry! I haven't finish it! :) ")
+        file = args.file
+        if(check_file(file,dbpath,dbname)):
+            exit()
+        else:
+            exit("File dose not exists.")
     if(args.delete is not None):
         exit("Don't work too,sorry! I haven't finish it! :) ")
 

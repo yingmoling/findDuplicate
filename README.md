@@ -44,6 +44,7 @@ optional arguments:
   --dbname DBNAME       为存储结果的数据库命名。
                         默认为TDB.db。
   --file FILE           查看指定文件是否已经记录。
+                        需要填写绝对路径，对于路径或文件名有中文的，cmd可能查找出错（我遇到后将其切换到旧版就可以了）。
   --delete DELETE       删除指定文件的记录信息。
 
 ```
